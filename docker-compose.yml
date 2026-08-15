@@ -1,0 +1,56 @@
+name: shopverse
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shopverse
+      POSTGRES_PASSWORD: shopverse
+      POSTGRES_DB: shopverse
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopverse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://shopverse:shopverse@db:5432/shopverse
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-please}
+      ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      SQLITE_FALLBACK: "0"
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_CURRENCY: ${STRIPE_CURRENCY:-inr}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-http://localhost:8090/orders?reference={CHECKOUT_SESSION_ID}&stripe=1}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-http://localhost:8090/cart}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Stripe webhook target: `stripe listen --forward-to localhost:8080/api/payments/webhook`
+  # or set the endpoint URL in https://dashboard.stripe.com/webhooks.
+  # Checkout uses Stripe's hosted payment page (redirect), so no Stripe JS is needed.
+
+volumes:
+  pgdata:
