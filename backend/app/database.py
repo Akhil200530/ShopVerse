@@ -11,7 +11,10 @@ class Base(DeclarativeBase):
 def _engine_url() -> str:
     if settings.sqlite_fallback or settings.database_url.startswith("postgres") is False:
         return "sqlite:///./shopverse.db"
-    return settings.database_url
+    url = settings.database_url
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://") :]
+    return url
 
 
 engine = create_engine(_engine_url(), pool_pre_ping=True, connect_args={"check_same_thread": False} if "sqlite" in _engine_url() else {})

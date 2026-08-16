@@ -44,4 +44,4 @@ services:
     plan: free
     envVars:
       - key: BACKEND_URL
-        value: backend
+        value: https://shopverse-backend.onrender.com
