@@ -17,11 +17,7 @@ class Settings(BaseSettings):
     )
     sqlite_fallback: bool = os.getenv("SQLITE_FALLBACK", "1") == "1"
 
-    cors_origins: list[str] = [
-        "http://localhost:5173",
-        "http://localhost:4173",
-        "http://localhost:8080",
-    ]
+    cors_origins_extra: str = os.getenv("CORS_ORIGINS", "")
 
     # Stripe (card payments). Leave unset to run COD-only or sandbox mode.
     stripe_secret_key: str = os.getenv("STRIPE_SECRET_KEY", "")
@@ -33,6 +29,16 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        defaults = [
+            "http://localhost:5173",
+            "http://localhost:4173",
+            "http://localhost:8080",
+        ]
+        extra = [o.strip() for o in self.cors_origins_extra.split(",") if o.strip()]
+        return defaults + extra
 
 
 settings = Settings()
