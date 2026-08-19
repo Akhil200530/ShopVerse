@@ -20,11 +20,16 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
     if (token) headers['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  let res
+  for (let attempt = 0; attempt < 6; attempt++) {
+    res = await fetch(`/api${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    })
+    if (res.status !== 429) break
+    await new Promise((r) => setTimeout(r, 1000 * Math.min(2 ** attempt, 8)))
+  }
 
   if (res.status === 401 && auth) {
     clearToken()
